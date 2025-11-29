@@ -9,9 +9,8 @@ jobs:
   build_ios:
     name: Build Flutter iOS
     runs-on: macos-latest
-
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - uses: subosito/flutter-action@v2
         with:
@@ -20,9 +19,14 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Disable Code Signing
+        run: |
+          sed -i '' 's/CODE_SIGNING_ALLOWED = YES/CODE_SIGNING_ALLOWED = NO/g' ios/Runner.xcodeproj/project.pbxproj
+          sed -i '' 's/CODE_SIGNING_REQUIRED = YES/CODE_SIGNING_REQUIRED = NO/g' ios/Runner.xcodeproj/project.pbxproj
+          
       - name: Build iOS
         run: |
-          flutter build ios --release --no-codesign
+          flutter build ios --release --no-codesign --config-only
           cd build/ios/iphoneos
           mkdir Payload
           cd Payload
@@ -31,7 +35,7 @@ jobs:
           zip -r app.ipa Payload
           
       - name: Upload IPA
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ios-build
           path: build/ios/iphoneos/app.ipa
