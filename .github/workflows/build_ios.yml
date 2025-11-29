@@ -9,6 +9,7 @@ jobs:
   build_ios:
     name: Build Flutter iOS
     runs-on: macos-latest
+
     steps:
       - uses: actions/checkout@v4
 
@@ -19,29 +20,40 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Disable Code Signing
-        run: |
-          # Remove explicit code signing identity
-          sed -i '' 's/"CODE_SIGN_IDENTITY\[sdk=iphoneos\*\]" = "iPhone Developer";/"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = ""; CODE_SIGNING_ALLOWED = NO; CODE_SIGNING_REQUIRED = NO;/g' ios/Runner.xcodeproj/project.pbxproj
-          # Disable automatic code signing
-          sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' ios/Runner.xcodeproj/project.pbxproj
-          # Ensure xcconfig also has the settings
-          echo "CODE_SIGNING_ALLOWED = NO" >> ios/Flutter/Release.xcconfig
-          echo "CODE_SIGNING_REQUIRED = NO" >> ios/Flutter/Release.xcconfig
-          echo "CODE_SIGN_IDENTITY = \"\"" >> ios/Flutter/Release.xcconfig
-          
       - name: Build iOS
         run: |
-          flutter build ios --release --no-codesign --config-only
-          cd build/ios/iphoneos
+          # Prepare the Flutter environment and assets
+          flutter build ios --release --config-only --no-codesign
+          
+          # Build using xcodebuild directly to strictly enforce no code signing
+          xcodebuild -workspace ios/Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            clean build \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            -derivedDataPath build/ios_xcodebuild
+            
+      - name: Package IPA
+        run: |
+          # Find the built Runner.app
+          APP_PATH=$(find build/ios_xcodebuild -name "Runner.app" | head -n 1)
+          if [ -z "$APP_PATH" ]; then
+            echo "Runner.app not found!"
+            exit 1
+          fi
+          
+          echo "Found app at: $APP_PATH"
+          
           mkdir Payload
-          cd Payload
-          ln -s ../Runner.app
-          cd ..
+          cp -R "$APP_PATH" Payload/
           zip -r app.ipa Payload
           
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
           name: ios-build
-          path: build/ios/iphoneos/app.ipa
+          path: app.ipa
