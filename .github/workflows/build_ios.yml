@@ -21,6 +21,11 @@ jobs:
 
       - name: Disable Code Signing
         run: |
+          # Remove explicit code signing identity
+          sed -i '' 's/"CODE_SIGN_IDENTITY\[sdk=iphoneos\*\]" = "iPhone Developer";/"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = ""; CODE_SIGNING_ALLOWED = NO; CODE_SIGNING_REQUIRED = NO;/g' ios/Runner.xcodeproj/project.pbxproj
+          # Disable automatic code signing
+          sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' ios/Runner.xcodeproj/project.pbxproj
+          # Ensure xcconfig also has the settings
           echo "CODE_SIGNING_ALLOWED = NO" >> ios/Flutter/Release.xcconfig
           echo "CODE_SIGNING_REQUIRED = NO" >> ios/Flutter/Release.xcconfig
           echo "CODE_SIGN_IDENTITY = \"\"" >> ios/Flutter/Release.xcconfig
