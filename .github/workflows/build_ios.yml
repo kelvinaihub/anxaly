@@ -25,6 +25,16 @@ jobs:
           # Prepare the Flutter environment and assets
           flutter build ios --release --config-only --no-codesign
           
+      - name: Disable Code Signing
+        run: |
+          # Aggressively disable code signing in project.pbxproj
+          sed -i '' 's/CODE_SIGN_IDENTITY = "iPhone Developer";/CODE_SIGN_IDENTITY = "";/g' ios/Runner.xcodeproj/project.pbxproj
+          sed -i '' 's/"CODE_SIGN_IDENTITY\[sdk=iphoneos\*\]" = "iPhone Developer";/"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";/g' ios/Runner.xcodeproj/project.pbxproj
+          sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' ios/Runner.xcodeproj/project.pbxproj
+          sed -i '' 's/DevelopmentTeam = .*/DevelopmentTeam = "";/g' ios/Runner.xcodeproj/project.pbxproj
+
+      - name: Build IPA with xcodebuild
+        run: |
           # Build using xcodebuild directly to strictly enforce no code signing
           xcodebuild -workspace ios/Runner.xcworkspace \
             -scheme Runner \
@@ -35,6 +45,8 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_STYLE=Manual \
+            PROVISIONING_PROFILE_SPECIFIER="" \
             -derivedDataPath build/ios_xcodebuild
             
       - name: Package IPA
